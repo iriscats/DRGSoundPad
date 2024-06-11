@@ -1,10 +1,20 @@
 using Microsoft.Win32;
 using NAudio.Wave;
+using System.Windows;
+using System.Windows.Forms;
 
 namespace ConsoleApp1;
 
 public class SpeakServer
 {
+
+    private static WaveOutEvent currentOutputDevice = null;
+    private static AudioFileReader currentAudioFile = null;
+    private static bool ignoreNextPlayAttempt = false;
+    private static WaveOutEvent currentOutputDeviceEX;
+    private static AudioFileReader currentAudioFileEX;
+
+
     public static bool checkVB()
     {
         bool isVBCableInstalled = false; // 初始化VB-Cable安装状态为假（未安装）
@@ -54,8 +64,6 @@ public class SpeakServer
         return -1; // 没有找到匹配的设备
     }
 
-
-    private static bool ignoreNextPlayAttempt = false;
 
     public static void PlayAudioToSpecificDevice(string audioFilePath, int deviceNumber, bool stopCurrent, float volume,
         bool rplay, string raudioFilePath, int rdeviceNumber, float rvolume)
@@ -109,5 +117,36 @@ public class SpeakServer
         }
 
         ignoreNextPlayAttempt = false;
+    }
+
+
+    public static void PlayAudioex(string audioFilePath, int deviceNumber, float volume)
+    {
+        try
+        {
+            if (currentOutputDeviceEX != null)
+            {
+                currentOutputDeviceEX.Stop();
+                currentOutputDeviceEX.Dispose();
+                currentAudioFileEX?.Dispose();
+            }
+            var audioFile = new AudioFileReader(audioFilePath);
+            var outputDevice = new WaveOutEvent { DeviceNumber = deviceNumber };
+            // 应用音量设置
+            outputDevice.Volume = volume; // 确保 volume 值在 0 到 1 之间
+            outputDevice.PlaybackStopped += (sender, e) =>
+            {
+                outputDevice.Dispose();
+                audioFile.Dispose();
+            };
+            outputDevice.Init(audioFile);
+            outputDevice.Play();
+            currentOutputDeviceEX = outputDevice;
+            currentAudioFileEX = audioFile;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"播放音频时出错: {ex.Message}", "错误");
+        }
     }
 }
