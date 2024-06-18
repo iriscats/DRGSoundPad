@@ -1,7 +1,6 @@
+using System;
 using Microsoft.Win32;
 using NAudio.Wave;
-using System.Windows;
-using System.Windows.Forms;
 
 namespace DRGSoundPad
 {
@@ -89,6 +88,7 @@ namespace DRGSoundPad
                     var outputDevice = new WaveOutEvent { DeviceNumber = deviceNumber };
                     outputDevice.Volume = Math.Max(0, Math.Min(1, volume));
                     int totalMilliseconds = (int)audioFile.TotalTime.TotalMilliseconds;
+
                     if (rplay)
                     {
                         //PlayAudioex(raudioFilePath, rdeviceNumber, rvolume);
@@ -114,7 +114,7 @@ namespace DRGSoundPad
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"播放音频时出错: {ex.Message}");
+                Console.WriteLine($"播放音频时出错: {ex.Message}");
             }
 
             ignoreNextPlayAttempt = false;
@@ -147,7 +147,7 @@ namespace DRGSoundPad
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"播放音频时出错: {ex.Message}", "错误");
+                Console.WriteLine($"播放音频时出错: {ex.Message}", "错误");
             }
         }
     }
