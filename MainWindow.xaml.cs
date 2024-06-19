@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualBasic.Devices;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -22,13 +23,16 @@ namespace DRGSoundPad
     public partial class MainWindow : Window
     {
 
-        private int vbDevice = 0;
         private const string WavSaveDir = "Sound";
+        private int _vbDevice = 0;
+        private object _lockObject = new object();
+
+
         public MainWindow()
         {
             InitializeComponent();
 
-            vbDevice = SpeakServer.GetOutputDeviceID("CABLE Input (VB-Audio Virtual C");
+            _vbDevice = SpeakServer.GetOutputDeviceID("CABLE Input (VB-Audio Virtual C");
             this.TB_TTS_TextBox.Text = TTSServer.DefaultUrl;
         }
 
@@ -54,27 +58,67 @@ namespace DRGSoundPad
             }
         }
 
-        async void PlaySound(string text)
+        async void PlaySound(DRGMessage message)
         {
-            string audioName = ComputeMD5Hash(text) + ".wav";
+
+            string audioName = ComputeMD5Hash(message.msg) + ".wav";
             string audioPath = System.IO.Path.Combine(WavSaveDir, audioName);
             if (!File.Exists(audioPath))
             {
-                await TTSServer.DownloadFile(text, audioPath);
+                await TTSServer.DownloadFile(message.msg, audioPath);
             }
-            SpeakServer.PlayAudioToSpecificDevice(audioPath, vbDevice, false, 100, false);
-            SpeakServer.PlayAudioex(audioPath, 0, 1);
+
+            lock (_lockObject)
+            {
+                SpeakServer.PlayAudioToSpecificDevice(audioPath, _vbDevice, false, 1);
+                SpeakServer.PlayAudioex(audioPath, 0, 1);
+            }
 
             Dispatcher.Invoke(() =>
             {
-                this.TB_Log.Text += $"Recv: {text}\n";
+                this.TB_Log.Text += $"[{message.player}]{message.msg}\n";
             });
+
+        }
+
+        private void CheckEnv()
+        {
+            bool vb = SpeakServer.checkVB();
+            if (vb)
+            {
+                this.TB_VB.Text = "已启用";
+                this.B_VB.Visibility = Visibility.Hidden;
+            }
+            else
+            {
+                this.TB_VB.Text = "未启用";
+                this.B_VB.Visibility = Visibility.Visible;
+            }
+
+
+        }
+
+        private void CheckMod()
+        {
+            bool mod = ModInstaller.CheckModInstall();
+            if (mod)
+            {
+                this.TB_Mod.Text = "已启用";
+                this.B_Mod.Visibility = Visibility.Hidden;
+            }
+            else
+            {
+                this.TB_Mod.Text = "未启用";
+                this.B_Mod.Visibility = Visibility.Visible;
+            }
 
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             CheckAndCreateWavSaveDir(WavSaveDir);
+            CheckEnv();
+            CheckMod();
 
             this.CB_OutputDDevice.ItemsSource = SpeakServer.GetOutputAudioDeviceNames();
 
@@ -92,6 +136,42 @@ namespace DRGSoundPad
             if (textBox != null)
             {
                 TTSServer.DefaultUrl = textBox.Text;
+            }
+        }
+
+        private void B_Mod_Click(object sender, RoutedEventArgs e)
+        {
+            if (ModInstaller.Install())
+            {
+                CheckMod();
+            }
+        }
+
+        private void B_VB_Click(object sender, RoutedEventArgs e)
+        {
+            string appName = AppDomain.CurrentDomain.BaseDirectory;
+            appName += "\\VBCABLE\\Setup.exe";
+            if (File.Exists(appName))
+            {
+                ProcessStartInfo startInfo = new ProcessStartInfo();
+                startInfo.FileName = appName; // 指定外部exe的完整路径
+                startInfo.UseShellExecute = true;
+                startInfo.Verb = "runas"; // 设置runas使得程序以管理员权限运行
+
+                try
+                {
+                    Process process = Process.Start(startInfo);
+                    process.WaitForExit(); // 如果需要等待程序执行完成可以使用这个方法
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("无法以管理员权限启动程序: " + ex.Message);
+                }
+
+            }
+            else
+            {
+                MessageBox.Show("安装程序不存在！");
             }
         }
     }

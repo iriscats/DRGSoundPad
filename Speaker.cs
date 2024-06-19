@@ -11,7 +11,6 @@ namespace DRGSoundPad
 
         private static WaveOutEvent currentOutputDevice = null;
         private static AudioFileReader currentAudioFile = null;
-        private static bool ignoreNextPlayAttempt = false;
         private static WaveOutEvent currentOutputDeviceEX;
         private static AudioFileReader currentAudioFileEX;
 
@@ -37,6 +36,8 @@ namespace DRGSoundPad
 
             return isVBCableInstalled;
         }
+
+
 
         public static string[] GetOutputAudioDeviceNames()
         {
@@ -66,7 +67,7 @@ namespace DRGSoundPad
         }
 
 
-        public static void PlayAudioToSpecificDevice(string audioFilePath, int deviceNumber, bool stopCurrent, float volume, bool rplay)
+        public static void PlayAudioToSpecificDevice(string audioFilePath, int deviceNumber, bool stopCurrent, float volume)
         {
             try
             {
@@ -89,35 +90,25 @@ namespace DRGSoundPad
                     outputDevice.Volume = Math.Max(0, Math.Min(1, volume));
                     int totalMilliseconds = (int)audioFile.TotalTime.TotalMilliseconds;
 
-                    if (rplay)
-                    {
-                        //PlayAudioex(raudioFilePath, rdeviceNumber, rvolume);
-                        ignoreNextPlayAttempt = false;
-                    }
-
                     outputDevice.PlaybackStopped += (sender, e) =>
                     {
                         outputDevice.Dispose();
                         audioFile.Dispose();
-                        ignoreNextPlayAttempt = false;
                         currentOutputDevice = null;
                         currentAudioFile = null;
                     };
                     outputDevice.Init(audioFile);
                     outputDevice.Play();
-                    ignoreNextPlayAttempt = false;
                     currentOutputDevice = outputDevice;
                     currentAudioFile = audioFile;
                 }
 
-                ignoreNextPlayAttempt = false;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"播放音频时出错: {ex.Message}");
             }
 
-            ignoreNextPlayAttempt = false;
         }
 
 
